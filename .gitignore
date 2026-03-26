@@ -17,6 +17,10 @@ local.properties
 /composeApp/build
 /androidApp/build
 
+# Signing
+*.jks
+*.keystore
+
 # iOS
 /iosApp/iosApp.xcworkspace
 /iosApp/Pods

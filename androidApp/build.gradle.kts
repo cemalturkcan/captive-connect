@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
@@ -16,6 +18,20 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        create("release") {
+            val props = rootProject.file("local.properties")
+            if (props.exists()) {
+                val localProps = Properties()
+                props.inputStream().use { localProps.load(it) }
+                storeFile = rootProject.file(localProps.getProperty("RELEASE_STORE_FILE", "keystore.jks"))
+                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD", "")
+                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS", "")
+                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD", "")
+            }
+        }
+    }
+
     buildFeatures {
         compose = true
     }
@@ -30,8 +46,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
             )
         }
     }
