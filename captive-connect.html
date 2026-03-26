@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaptiveConnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0A0A0A;
+    --surface:    #111111;
+    --surface2:   #1A1A1A;
+    --border:     rgba(255,255,255,0.08);
+    --border-mid: rgba(255,255,255,0.14);
+    --text:       #F0F0F0;
+    --text-mid:   #777;
+    --text-dim:   #3A3A3A;
+    --white:      #FFFFFF;
+    --mono: 'DM Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #060606;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+  }
+
+  /* Phone shell */
+  .phone {
+    width: 375px;
+    height: 720px;
+    background: var(--bg);
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── VIEWS ── */
+  .view { display: none; flex-direction: column; flex: 1; }
+  .view.active { display: flex; animation: vIn 0.2s ease; }
+  @keyframes vIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── MAIN VIEW ── */
+
+  /* Top area: wifi icon + status, takes remaining space above form */
+  .top-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding-bottom: 8px;
+  }
+
+  /* WiFi icon — static SVG, color driven by JS class on .phone */
+  .wifi-icon {
+    width: 80px;
+    height: 60px;
+    flex-shrink: 0;
+  }
+  .wifi-icon svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* Arc colors by state */
+  .arc { fill: none; stroke-linecap: round; stroke-width: 3; stroke: var(--text-dim); transition: stroke 0.35s; }
+  .wdot { fill: var(--text-dim); transition: fill 0.35s; }
+
+  /* Connected */
+  .st-connected .arc  { stroke: var(--white); }
+  .st-connected .wdot { fill: var(--white); }
+
+  /* Error */
+  .st-error .arc  { stroke: #3A3A3A; }
+  .st-error .wdot { fill: #3A3A3A; }
+  .err-x { display: none; }
+  .st-error .err-x { display: block; }
+
+  /* Checking / LoggingIn */
+  .st-checking .arc  { stroke: #555; }
+  .st-checking .wdot { fill: #555; }
+
+  /* SSID */
+  .wifi-ssid {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+
+  /* Status row */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-mid);
+    letter-spacing: 0.08em;
+    min-height: 18px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .status-row.visible { opacity: 1; }
+  .sdot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .st-connected .sdot  { background: var(--white); }
+  .st-error .sdot      { background: #555; }
+  .st-checking .sdot   { background: #555; }
+
+  /* ── FORM AREA ── */
+  .form-area {
+    flex-shrink: 0;
+    padding: 0 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .field-lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .input-row { display: flex; gap: 8px; }
+
+  /* Country code — compact */
+  .cc-wrap {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    padding: 0 10px;
+    gap: 2px;
+    flex: 0 0 64px;
+    width: 64px;
+    height: 44px;
+  }
+  .cc-plus {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .cc-num,
+  .cc-num:focus {
+    width: 32px;
+    min-width: 0;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    padding: 0 !important;
+  }
+
+  input[type="tel"],
+  input[type="password"],
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.18s, background 0.18s;
+    -webkit-appearance: none;
+  }
+  input::placeholder { color: var(--text-dim); }
+  input:focus {
+    border-color: rgba(255,255,255,0.28);
+    background: var(--surface2);
+  }
+  input[type="password"] { letter-spacing: 0.12em; }
+
+  /* ── BUTTON ── */
+  .connect-btn {
+    width: 100%; height: 50px;
+    border-radius: 12px; border: none;
+    font-family: var(--display);
+    font-size: 20px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    transition: all 0.2s ease;
+    margin-top: 2px;
+  }
+  .connect-btn:disabled {
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    cursor: not-allowed;
+  }
+  .connect-btn.b-idle:not(:disabled)  { background: var(--white); color: #0A0A0A; }
+  .connect-btn.b-idle:not(:disabled):hover  { background: #E4E4E4; }
+  .connect-btn.b-loading { background: var(--surface2); color: var(--text-mid); border: 1px solid var(--border-mid); cursor: not-allowed; }
+  .connect-btn.b-success { background: var(--white); color: #0A0A0A; animation: pop 0.3s ease; }
+  .connect-btn.b-error   { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.2); }
+  .connect-btn.b-error:hover { background: var(--surface2); }
+  @keyframes pop { 0%{transform:scale(0.96)} 100%{transform:scale(1)} }
+
+  .btn-spinner {
+    width: 15px; height: 15px;
+    border: 2px solid #333;
+    border-top-color: var(--text-mid);
+    border-radius: 50%;
+    animation: spin 0.65s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Settings btn top-right */
+  .top-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 20px 20px 0;
+    flex-shrink: 0;
+  }
+  .icon-btn {
+    width: 34px; height: 34px;
+    border: 1px solid var(--border-mid);
+    border-radius: 9px;
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-mid);
+    transition: all 0.18s;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--surface2); color: var(--text); border-color: rgba(255,255,255,0.22); }
+
+  /* ── SETTINGS VIEW ── */
+  .settings-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 20px 24px 28px;
+    flex-shrink: 0;
+  }
+  .settings-ttl {
+    font-family: var(--display);
+    font-size: 28px; color: var(--white); letter-spacing: 0.06em;
+  }
+
+  .s-body { padding: 0 24px; display: flex; flex-direction: column; gap: 8px; }
+
+  .s-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .s-row-lbl { font-size: 13px; font-weight: 500; color: var(--text); }
+  .s-row-sub { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+  .s-row-val { font-family: var(--mono); font-size: 10px; color: var(--text-mid); }
+
+  .lang-toggle {
+    display: flex; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px;
+  }
+  .lang-opt {
+    padding: 4px 10px; font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.1em; color: var(--text-dim);
+    background: transparent; border: none; border-radius: 5px;
+    cursor: pointer; transition: all 0.18s; line-height: 1;
+  }
+  .lang-opt.active { background: var(--white); color: #0A0A0A; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+
+  <!-- ══ MAIN VIEW ══ -->
+  <div class="view active" id="mainView">
+
+    <div class="top-bar">
+      <div class="icon-btn" id="openSettings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- WiFi + status centered in remaining space -->
+    <div class="top-area">
+      <div class="wifi-icon">
+        <svg viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+          <!-- largest arc -->
+          <path class="arc arc-3" d="M 4 32 Q 40 3 76 32"/>
+          <!-- mid arc -->
+          <path class="arc arc-2" d="M 15 42 Q 40 18 65 42"/>
+          <!-- small arc -->
+          <path class="arc arc-1" d="M 27 51 Q 40 39 53 51"/>
+          <!-- dot -->
+          <circle class="wdot" cx="40" cy="57" r="4"/>
+          <!-- error X -->
+          <g class="err-x">
+            <line x1="26" y1="36" x2="44" y2="54" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="44" y1="36" x2="26" y2="54" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="status-row">
+        <span class="sdot"></span>
+        <span id="wifiTxt"></span>
+      </div>
+    </div>
+
+    <!-- Form pinned to bottom -->
+    <div class="form-area">
+      <div>
+        <label class="field-lbl" data-i18n="phone_label">Phone Number</label>
+        <div class="input-row">
+          <div class="cc-wrap">
+            <span class="cc-plus">+</span>
+            <input class="cc-num" type="text" id="countryCode" value="90" maxlength="3">
+          </div>
+          <input type="tel" id="phoneInput" placeholder="5XX XXX XXXX" style="flex:1;min-width:0;width:0;">
+        </div>
+      </div>
+      <div>
+        <label class="field-lbl" data-i18n="pass_label">Password</label>
+        <input type="password" id="passInput" placeholder="••••••••">
+      </div>
+      <button class="connect-btn b-idle" id="connectBtn" disabled>
+        <span id="btnText"></span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ══ SETTINGS VIEW ══ -->
+  <div class="view" id="settingsView">
+    <div class="settings-top">
+      <div class="icon-btn" id="closeSettings">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </div>
+      <span class="settings-ttl" data-i18n="settings_title">SETTINGS</span>
+    </div>
+
+    <div class="s-body">
+      <div class="s-row">
+        <div>
+          <div class="s-row-lbl" data-i18n="lang_name">Language</div>
+          <div class="s-row-sub" data-i18n="lang_desc">Interface language</div>
+        </div>
+        <div class="lang-toggle">
+          <button class="lang-opt active" id="langEn">EN</button>
+          <button class="lang-opt" id="langTr">TR</button>
+        </div>
+      </div>
+      <div class="s-row">
+        <span class="s-row-lbl" data-i18n="info_version">Version</span>
+        <span class="s-row-val">2.4.1</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const strings = {
+  en: {
+    phone_label: 'Phone Number', pass_label: 'Password',
+    btn_connect: 'CONNECT', btn_connected: 'CONNECTED', btn_retry: 'RETRY',
+    settings_title: 'SETTINGS', lang_name: 'Language', lang_desc: 'Interface language',
+    info_version: 'Version',
+    s_portal: 'Captive Portal Detected', s_checking: 'Connecting...',
+    s_auth: 'Authenticating...', s_routing: 'Configuring routes...',
+    s_connected: 'Session established', s_error: 'Authentication failed',
+  },
+  tr: {
+    phone_label: 'Telefon Numarası', pass_label: 'Şifre',
+    btn_connect: 'BAĞLAN', btn_connected: 'BAĞLANDI', btn_retry: 'TEKRAR DENE',
+    settings_title: 'AYARLAR', lang_name: 'Dil', lang_desc: 'Arayüz dili',
+    info_version: 'Sürüm',
+    s_portal: 'Captive Portal Algılandı', s_checking: 'Bağlanılıyor...',
+    s_auth: 'Kimlik doğrulanıyor...', s_routing: 'Yollar ayarlanıyor...',
+    s_connected: 'Oturum açıldı', s_error: 'Kimlik doğrulama başarısız',
+  }
+};
+
+let lang = 'en', appState = 'idle';
+const t = k => strings[lang][k] || k;
+const phone = document.getElementById('phone');
+
+const STATE_CLASSES = ['st-idle','st-checking','st-connected','st-error'];
+function setWifiState(s) {
+  STATE_CLASSES.forEach(c => phone.classList.remove(c));
+  phone.classList.add('st-' + s);
+}
+
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    if (el.tagName !== 'INPUT') el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  updateBtn(); updateStatus();
+}
+
+function updateBtn() {
+  const el = document.getElementById('btnText');
+  el.textContent = appState === 'success' ? t('btn_connected') : appState === 'error' ? t('btn_retry') : t('btn_connect');
+}
+
+function updateStatus() {
+  const row = document.querySelector('.status-row');
+  const map = { loading:'s_checking', success:'s_connected', error:'s_error' };
+  if (appState === 'idle') {
+    row.classList.remove('visible');
+    document.getElementById('wifiTxt').textContent = '';
+  } else {
+    row.classList.add('visible');
+    document.getElementById('wifiTxt').textContent = t(map[appState] || 's_checking');
+  }
+}
+
+// Views
+document.getElementById('openSettings').onclick = () => {
+  document.getElementById('mainView').classList.remove('active');
+  document.getElementById('settingsView').classList.add('active');
+};
+document.getElementById('closeSettings').onclick = () => {
+  document.getElementById('settingsView').classList.remove('active');
+  document.getElementById('mainView').classList.add('active');
+};
+
+// Lang
+document.getElementById('langEn').onclick = () => {
+  lang = 'en';
+  document.getElementById('langEn').classList.add('active');
+  document.getElementById('langTr').classList.remove('active');
+  applyLang();
+};
+document.getElementById('langTr').onclick = () => {
+  lang = 'tr';
+  document.getElementById('langTr').classList.add('active');
+  document.getElementById('langEn').classList.remove('active');
+  applyLang();
+};
+
+// Form
+const phoneInput = document.getElementById('phoneInput');
+const passInput  = document.getElementById('passInput');
+const btn        = document.getElementById('connectBtn');
+
+function checkForm() {
+  btn.disabled = phoneInput.value.trim().length < 6
+    || passInput.value.trim().length < 4
+    || appState === 'loading'
+    || appState === 'success';
+}
+phoneInput.addEventListener('input', checkForm);
+passInput.addEventListener('input', checkForm);
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function runConnect() {
+  if (appState === 'loading' || appState === 'success') return;
+  appState = 'loading';
+  btn.className = 'connect-btn b-loading';
+  btn.disabled = true;
+  document.getElementById('btnText').style.display = 'none';
+  const sp = document.createElement('div'); sp.className = 'btn-spinner'; sp.id = 'sp'; btn.appendChild(sp);
+
+  setWifiState('checking'); updateStatus();
+  await sleep(800);
+  document.getElementById('wifiTxt').textContent = t('s_auth');
+  await sleep(900);
+  document.getElementById('wifiTxt').textContent = t('s_routing');
+  await sleep(700);
+
+  btn.removeChild(document.getElementById('sp'));
+  document.getElementById('btnText').style.display = '';
+
+  const fail = Math.random() < 0.3;
+  if (fail) {
+    appState = 'error';
+    btn.className = 'connect-btn b-error';
+    btn.disabled = false;
+    setWifiState('error');
+  } else {
+    appState = 'success';
+    btn.className = 'connect-btn b-success';
+    btn.disabled = true;
+    setWifiState('connected');
+  }
+  updateBtn(); updateStatus();
+}
+
+btn.addEventListener('click', () => {
+  if (appState === 'error') {
+    appState = 'idle';
+    btn.className = 'connect-btn b-idle';
+    setWifiState('idle'); updateBtn(); updateStatus(); checkForm(); return;
+  }
+  runConnect();
+});
+
+applyLang(); setWifiState('idle');
+</script>
+</body>
+</html>

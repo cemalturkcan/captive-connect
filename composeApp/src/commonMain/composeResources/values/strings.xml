@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CaptiveConnect</string>
+    <string name="app_subtitle">Auto-login to captive WiFi portals</string>
+
+    <string name="phone_number">Phone Number</string>
+    <string name="phone_placeholder">5XX XXX XXXX</string>
+    <string name="password">Password</string>
+
+    <string name="button_connect">CONNECT</string>
+    <string name="button_connected">NEW CONNECTION</string>
+    <string name="button_retry">RETRY</string>
+
+    <string name="status_checking">Connecting…</string>
+    <string name="status_logging_in">Authenticating…</string>
+    <string name="status_verifying">Configuring routes…</string>
+    <string name="status_connected">Session established</string>
+    <string name="status_already_online">Already online</string>
+    <string name="status_error">Authentication failed</string>
+
+    <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="language_description">Interface language</string>
+    <string name="version_label">Version</string>
+
+    <string name="password_placeholder">••••••••</string>
+    <string name="country_code_placeholder">90</string>
+    <string name="content_description_back">Go back</string>
+    <string name="error_network">Connection failed</string>
+    <string name="error_unsupported_portal">Unsupported network</string>
+    <string name="error_login_failed">Authentication failed</string>
+    <string name="error_verification_failed">Still offline after login</string>
+</resources>

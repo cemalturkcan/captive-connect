@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CaptiveConnect</string>
+    <string name="app_subtitle">Captive WiFi portallarına otomatik giriş</string>
+
+    <string name="phone_number">Telefon Numarası</string>
+    <string name="phone_placeholder">5XX XXX XXXX</string>
+    <string name="password">Şifre</string>
+
+    <string name="button_connect">BAĞLAN</string>
+    <string name="button_connected">YENİ BAĞLANTI</string>
+    <string name="button_retry">TEKRAR DENE</string>
+
+    <string name="status_checking">Bağlanılıyor…</string>
+    <string name="status_logging_in">Kimlik doğrulanıyor…</string>
+    <string name="status_verifying">Yollar ayarlanıyor…</string>
+    <string name="status_connected">Oturum açıldı</string>
+    <string name="status_already_online">Zaten çevrimiçi</string>
+    <string name="status_error">Kimlik doğrulama başarısız</string>
+
+    <string name="settings">Ayarlar</string>
+    <string name="language">Dil</string>
+    <string name="language_description">Arayüz dili</string>
+    <string name="version_label">Sürüm</string>
+
+    <string name="password_placeholder">••••••••</string>
+    <string name="country_code_placeholder">90</string>
+    <string name="content_description_back">Geri dön</string>
+    <string name="error_network">Bağlantı başarısız</string>
+    <string name="error_unsupported_portal">Desteklenmeyen ağ</string>
+    <string name="error_login_failed">Kimlik doğrulama başarısız</string>
+    <string name="error_verification_failed">Giriş sonrası çevrimdışı</string>
+</resources>

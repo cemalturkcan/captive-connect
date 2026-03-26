@@ -1,0 +1,7 @@
+{"action_id":"action_mn6g16el_fqli8db6","kind":"session.create","status":"started","started_at":"2026-03-25T19:35:29.709Z","input_summary":{"viewport":{"width":500,"height":900}}}
+{"action_id":"action_mn6g19ub_3vcyntt6","kind":"page.navigate","status":"started","started_at":"2026-03-25T19:35:34.163Z","input_summary":{"session_id":"session_default","url":"http://localhost:5177","wait_until":"networkidle"},"session_id":"session_default"}
+{"action_id":"action_mn6g1fd3_3da1xqbb","kind":"observe.page_state","status":"started","started_at":"2026-03-25T19:35:41.319Z","input_summary":{"session_id":"session_default","recent_network_limit":10},"session_id":"session_default"}
+{"action_id":"action_mn6g1iao_95ucv4lz","kind":"observe.text","status":"started","started_at":"2026-03-25T19:35:45.120Z","input_summary":{"session_id":"session_default","format":"text"},"session_id":"session_default"}
+{"action_id":"action_mn6g1l1y_ut2k8z1u","kind":"observe.dom","status":"started","started_at":"2026-03-25T19:35:48.694Z","input_summary":{"session_id":"session_default"},"session_id":"session_default"}
+{"action_id":"action_mn6g1ou4_83tgyicm","kind":"observe.console","status":"started","started_at":"2026-03-25T19:35:53.596Z","input_summary":{"session_id":"session_default","limit":50},"session_id":"session_default"}
+{"action_id":"action_mn6g2541_xazjxbdx","kind":"session.close","status":"started","started_at":"2026-03-25T19:36:14.689Z","input_summary":{"session_id":"session_default"},"session_id":"session_default"}
