@@ -4,7 +4,9 @@ import com.cemalturkcan.captiveconnect.domain.portal.DetectionResult
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 
@@ -12,10 +14,11 @@ private const val CONNECTIVITY_CHECK_URL =
     "http://connectivitycheck.gstatic.com/generate_204"
 private const val REQUEST_TIMEOUT_MS = 15_000L
 private const val CONNECT_TIMEOUT_MS = 10_000L
+private const val USER_AGENT = "Mozilla/5.0"
 
 private val TRUSTED_PORTAL_HOSTS = setOf(
     "ibbwifi.istanbul",
-    "captive.ibbwifi.istanbul"
+    "captive.ibbwifi.istanbul",
 )
 
 class ConnectivityChecker {
@@ -28,6 +31,9 @@ class ConnectivityChecker {
                 connectTimeoutMillis = CONNECT_TIMEOUT_MS
             }
             followRedirects = false
+            defaultRequest {
+                header("User-Agent", USER_AGENT)
+            }
         }
         return try {
             val response: HttpResponse = client.get(CONNECTIVITY_CHECK_URL)

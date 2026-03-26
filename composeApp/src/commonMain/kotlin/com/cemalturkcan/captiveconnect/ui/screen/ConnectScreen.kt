@@ -28,11 +28,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import captiveconnect.composeapp.generated.resources.Res
+import captiveconnect.composeapp.generated.resources.network_label
 import captiveconnect.composeapp.generated.resources.password
 import captiveconnect.composeapp.generated.resources.password_placeholder
 import captiveconnect.composeapp.generated.resources.phone_number
 import com.cemalturkcan.captiveconnect.domain.model.ConnectionState
+import com.cemalturkcan.captiveconnect.domain.model.PortalInfo
 import com.cemalturkcan.captiveconnect.presentation.ConnectViewModel
+import com.cemalturkcan.captiveconnect.ui.components.PortalPicker
 import com.cemalturkcan.captiveconnect.ui.components.StatusIndicator
 import com.cemalturkcan.captiveconnect.ui.components.WifiAnimation
 import com.cemalturkcan.captiveconnect.ui.primitives.AppTextField
@@ -91,12 +94,15 @@ fun ConnectScreen(
             password = uiState.password,
             countryCode = uiState.countryCode,
             connectionState = uiState.connectionState,
+            availablePortals = uiState.availablePortals,
+            selectedPortalId = uiState.selectedPortalId,
             isLoading = isLoading,
             isSuccess = isSuccess,
             isError = isError,
             onPhoneChange = viewModel::updatePhoneNumber,
             onPasswordChange = viewModel::updatePassword,
             onCountryCodeChange = viewModel::updateCountryCode,
+            onPortalSelected = viewModel::selectPortal,
             onConnectClick = {
                 if (isSuccess) viewModel.resetState() else viewModel.connect()
             },
@@ -122,12 +128,15 @@ private fun FormArea(
     password: String,
     countryCode: String,
     connectionState: ConnectionState,
+    availablePortals: List<PortalInfo>,
+    selectedPortalId: String,
     isLoading: Boolean,
     isSuccess: Boolean,
     isError: Boolean,
     onPhoneChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onCountryCodeChange: (String) -> Unit,
+    onPortalSelected: (String) -> Unit,
     onConnectClick: () -> Unit,
 ) {
     val phoneFocus = remember { FocusRequester() }
@@ -140,6 +149,12 @@ private fun FormArea(
             .padding(horizontal = SPACING_10, vertical = SPACING_12),
         verticalArrangement = Arrangement.spacedBy(SPACING_5),
     ) {
+        NetworkSection(
+            portals = availablePortals,
+            selectedPortalId = selectedPortalId,
+            onPortalSelected = onPortalSelected,
+        )
+
         PhoneSection(
             countryCode = countryCode,
             phoneNumber = phoneNumber,
@@ -168,6 +183,23 @@ private fun FormArea(
             isLoading = isLoading,
             isSuccess = isSuccess,
             isError = isError,
+        )
+    }
+}
+
+@Composable
+private fun NetworkSection(
+    portals: List<PortalInfo>,
+    selectedPortalId: String,
+    onPortalSelected: (String) -> Unit,
+) {
+    Column {
+        SectionLabel(text = stringResource(Res.string.network_label))
+        Spacer(modifier = Modifier.height(SPACING_2))
+        PortalPicker(
+            portals = portals,
+            selectedPortalId = selectedPortalId,
+            onPortalSelected = onPortalSelected,
         )
     }
 }

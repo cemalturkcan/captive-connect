@@ -12,6 +12,8 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.cemalturkcan.captiveconnect.data.AppPreferencesStore
 import com.cemalturkcan.captiveconnect.data.ConnectivityChecker
 import com.cemalturkcan.captiveconnect.data.CredentialsStore
+import com.cemalturkcan.captiveconnect.data.NetworkBinder
+import com.cemalturkcan.captiveconnect.data.NetworkMonitor
 import com.cemalturkcan.captiveconnect.domain.portal.IbbWifiPortal
 import com.cemalturkcan.captiveconnect.presentation.ConnectViewModel
 import com.cemalturkcan.captiveconnect.ui.components.SettingsScreen
@@ -22,6 +24,8 @@ fun RootContent(
     component: RootComponent,
     credentialsStore: CredentialsStore,
     preferencesStore: AppPreferencesStore,
+    networkBinder: NetworkBinder,
+    networkMonitor: NetworkMonitor,
     versionName: String,
 ) {
     val portals = remember { listOf(IbbWifiPortal()) }
@@ -34,6 +38,8 @@ fun RootContent(
             portals = portals,
             connectivityChecker = connectivityChecker,
             preferencesStore = preferencesStore,
+            networkBinder = networkBinder,
+            networkMonitor = networkMonitor,
         )
     }
 

@@ -27,7 +27,9 @@
 
 - Credentials encrypted at rest (EncryptedSharedPreferences / Keychain)
 - Portal URLs validated against trusted host allowlist before credential submission
+- Host matching: `host == trusted || host.endsWith(".$trusted")`
 - Credentials persisted on input change for immediate recall (encrypted at rest)
+- Dual storage: secure (credentials) and plain (preferences) with separate implementations
 
 ## Conventions
 
@@ -39,3 +41,5 @@
 - `collectAsState()` for observing StateFlow in composables
 - HttpTimeout configured on all Ktor clients
 - Cookie merging deduplicates by cookie name
+- Portal-aware credential keys: `cred_{portalId}_{field}`
+- User-Agent header on all HTTP clients (`Mozilla/5.0`)

@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.arkivanov.decompose.defaultComponentContext
 import com.cemalturkcan.captiveconnect.data.AndroidKeyValueStorage
+import com.cemalturkcan.captiveconnect.data.AndroidNetworkBinder
+import com.cemalturkcan.captiveconnect.data.AndroidNetworkMonitor
 import com.cemalturkcan.captiveconnect.data.AndroidPreferencesStorage
 import com.cemalturkcan.captiveconnect.data.DefaultAppPreferencesStore
 import com.cemalturkcan.captiveconnect.data.DefaultCredentialsStore
@@ -23,6 +25,8 @@ class MainActivity : ComponentActivity() {
         val prefsStorage = AndroidPreferencesStorage(applicationContext)
         val credentialsStore = DefaultCredentialsStore(secureStorage)
         val preferencesStore = DefaultAppPreferencesStore(prefsStorage)
+        val networkBinder = AndroidNetworkBinder(applicationContext)
+        val networkMonitor = AndroidNetworkMonitor(applicationContext)
 
         val versionName = packageManager
             .getPackageInfo(packageName, 0).versionName.orEmpty()
@@ -36,6 +40,8 @@ class MainActivity : ComponentActivity() {
                 rootComponent = rootComponent,
                 credentialsStore = credentialsStore,
                 preferencesStore = preferencesStore,
+                networkBinder = networkBinder,
+                networkMonitor = networkMonitor,
                 versionName = versionName,
             )
         }

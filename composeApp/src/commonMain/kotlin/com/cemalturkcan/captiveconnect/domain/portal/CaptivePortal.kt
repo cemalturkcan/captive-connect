@@ -9,12 +9,14 @@ sealed class DetectionResult {
 }
 
 sealed class LoginResult {
-    data object Success : LoginResult()
-    data class Failure(val reason: String) : LoginResult()
+    data class Success(val debugLog: String = "") : LoginResult()
+    data class Failure(val reason: String, val debugLog: String = "") : LoginResult()
 }
 
 interface CaptivePortal {
+    val id: String
     val name: String
+    val defaultEntryUrl: String
     fun canHandle(entryUrl: String): Boolean
     suspend fun login(entryUrl: String, credentials: Credentials): LoginResult
 }

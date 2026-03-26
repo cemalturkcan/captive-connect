@@ -3,6 +3,7 @@ package com.cemalturkcan.captiveconnect.domain.portal
 import com.cemalturkcan.captiveconnect.domain.model.Credentials
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -14,21 +15,22 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 
-private const val PORTAL_BASE = "http://captive.ibbwifi.istanbul"
-private const val CSRF_PATTERN = """name="__RequestVerificationToken"[^>]*value="([^"]+)""""
-private const val USER_ID_PATTERN = """data-userid="([^"]+)""""
 private const val FLAG_CODE = "tr"
 private const val REQUEST_TIMEOUT_MS = 30_000L
 private const val CONNECT_TIMEOUT_MS = 15_000L
-private const val MIN_USER_ID_LENGTH = 10
-
-private val TRUSTED_HOSTS = setOf("captive.ibbwifi.istanbul", "ibbwifi.istanbul")
 
 class IbbWifiPortal : CaptivePortal {
 
-    override val name: String = "IBB WiFi Istanbul"
+    override val id: String = "ibb_wifi"
+    override val name: String = "ibbWiFi"
+    override val defaultEntryUrl: String = PORTAL_BASE
 
     private val json = Json { ignoreUnknownKeys = true }
+    private var debugLog = StringBuilder()
+
+    private fun log(msg: String) {
+        debugLog.appendLine(msg)
+    }
 
     override fun canHandle(entryUrl: String): Boolean {
         val host = extractHost(entryUrl) ?: return false
@@ -39,11 +41,16 @@ class IbbWifiPortal : CaptivePortal {
         entryUrl: String,
         credentials: Credentials,
     ): LoginResult {
+        debugLog = StringBuilder()
+        log("=== IBB WiFi Login ===")
+        log("Entry: $entryUrl")
+        log("Phone: ${maskPhone(credentials.phoneNumber)} | CC: ${credentials.countryCode}")
         val client = createClient()
         return try {
             executeLogin(client, entryUrl, credentials)
         } catch (e: Exception) {
-            LoginResult.Failure(e.message ?: "unknown error")
+            log("EXCEPTION: ${e.message}")
+            LoginResult.Failure(e.message ?: "unknown error", debugLog = debugLog.toString())
         } finally {
             client.close()
         }
@@ -53,8 +60,12 @@ class IbbWifiPortal : CaptivePortal {
         client: HttpClient, entryUrl: String, credentials: Credentials,
     ): LoginResult {
         val portalBase = extractPortalBase(entryUrl)
+        log("Base: $portalBase")
         val loginState = fetchLoginState(client, entryUrl, portalBase, credentials)
-            ?: return LoginResult.Failure("login state not resolved")
+        if (loginState == null) {
+            log("FAILED: login state not resolved")
+            return LoginResult.Failure("login state not resolved", debugLog = debugLog.toString())
+        }
         return submitLogin(client, portalBase, loginState, credentials)
     }
 
@@ -63,32 +74,33 @@ class IbbWifiPortal : CaptivePortal {
         portalBase: String, credentials: Credentials,
     ): LoginState? {
         var cookies = ""
-
         val portalPage = fetchPortalPage(client, entryUrl, portalBase, cookies)
-            ?: return null
+            ?: return null.also { log("FAILED: portal page not loaded") }
         cookies = portalPage.cookies
 
-        val csrfToken = extractCsrf(portalPage.body) ?: return null
+        val csrfToken = extractCsrf(portalPage.body)
+            ?: return null.also { log("FAILED: CSRF not found") }
+        log("CSRF: ${csrfToken.take(20)}...")
 
-        val landingResult = postLandingCheck(
-            client, portalBase, csrfToken, cookies, credentials,
-        )
+        val landingResult = postLandingCheck(client, portalBase, csrfToken, cookies, credentials)
         cookies = landingResult.cookies
-        val loginUrl = landingResult.loginUrl ?: return null
-        if (!isTrustedUrl(loginUrl)) return null
+        val loginUrl = landingResult.loginUrl
+            ?: return null.also { log("FAILED: login URL not resolved") }
+        if (!isTrustedUrl(loginUrl)) return null.also { log("FAILED: untrusted URL $loginUrl") }
+        log("Login URL: $loginUrl")
 
         val loginPage = client.get(loginUrl) {
             header("Cookie", cookies)
             header("Accept", "text/html")
         }
+        log("Login page: ${loginPage.status}")
         cookies = mergeCookies(cookies, extractSetCookies(loginPage.headers))
         val loginPageBody = loginPage.bodyAsText()
 
         val updatedCsrf = extractCsrf(loginPageBody) ?: csrfToken
-        val userId = extractUserId(loginPageBody)
-            ?: extractUserIdFromUrl(loginUrl)
-            ?: return null
-
+        val userId = extractUserId(loginPageBody) ?: extractUserIdFromUrl(loginUrl)
+            ?: return null.also { log("FAILED: user ID not found") }
+        log("User ID: $userId")
         return LoginState(csrf = updatedCsrf, userId = userId, cookies = cookies)
     }
 
@@ -96,11 +108,13 @@ class IbbWifiPortal : CaptivePortal {
         client: HttpClient, portalBase: String,
         loginState: LoginState, credentials: Credentials,
     ): LoginResult {
-        val response = client.post("$portalBase/${loginState.userId}/Login") {
+        val loginPath = "$portalBase/${loginState.userId}/Login"
+        log("Login POST: $loginPath")
+        val response = client.post(loginPath) {
             contentType(ContentType.Application.Json)
             header("X-CSRF-TOKEN", loginState.csrf)
             header("Cookie", loginState.cookies)
-            header("Referer", "$portalBase/${loginState.userId}/Login")
+            header("Referer", loginPath)
             header("Origin", portalBase)
             setBody(
                 json.encodeToString(
@@ -109,6 +123,7 @@ class IbbWifiPortal : CaptivePortal {
                 ),
             )
         }
+        log("Login response: ${response.status}")
         return handleLoginResponse(client, response, portalBase)
     }
 
@@ -120,16 +135,19 @@ class IbbWifiPortal : CaptivePortal {
             header("Accept", "text/html")
             if (initialCookies.isNotEmpty()) header("Cookie", initialCookies)
         }
+        log("Portal page: ${response.status}")
         var cookies = mergeCookies(initialCookies, extractSetCookies(response.headers))
 
         if (isRedirect(response.status)) {
             val location = response.headers["Location"] ?: return null
             val resolvedUrl = resolveUrl(location, portalBase)
             if (!isTrustedUrl(resolvedUrl)) return null
+            log("Redirect: $resolvedUrl")
             val redirected = client.get(resolvedUrl) {
                 header("Accept", "text/html")
                 header("Cookie", cookies)
             }
+            log("Redirected page: ${redirected.status}")
             cookies = mergeCookies(cookies, extractSetCookies(redirected.headers))
             return PageResult(body = redirected.bodyAsText(), cookies = cookies)
         }
@@ -158,6 +176,7 @@ class IbbWifiPortal : CaptivePortal {
                 ),
             )
         }
+        log("LandingCheck: ${response.status}")
         val cookies = mergeCookies(currentCookies, extractSetCookies(response.headers))
         return LandingResult(
             loginUrl = resolveLandingUrl(response, portalBase),
@@ -177,8 +196,9 @@ class IbbWifiPortal : CaptivePortal {
         else -> null
     }
 
-    private fun parseLandingResponse(body: String, portalBase: String): String? =
-        runCatching {
+    private fun parseLandingResponse(body: String, portalBase: String): String? {
+        log("Landing body: ${body.take(200)}")
+        return runCatching {
             val parsed = json.decodeFromString(LandingCheckResponse.serializer(), body)
             if (!parsed.isSuccess) return null
             if (parsed.url.isNotEmpty()) resolveUrl(parsed.url, portalBase) else null
@@ -186,6 +206,7 @@ class IbbWifiPortal : CaptivePortal {
             val uid = extractUserId(body)
             if (uid != null) "$portalBase/$uid/Login" else null
         }
+    }
 
     private suspend fun handleLoginResponse(
         client: HttpClient, response: HttpResponse, portalBase: String,
@@ -193,24 +214,26 @@ class IbbWifiPortal : CaptivePortal {
         if (isRedirect(response.status)) {
             val finalUrl = response.headers["Location"] ?: ""
             val resolved = resolveUrl(finalUrl, portalBase)
+            log("Login redirect: $resolved")
             if (finalUrl.isNotEmpty() && isTrustedUrl(resolved)) {
                 runCatching { client.get(resolved) }
             }
-            return LoginResult.Success
+            return LoginResult.Success(debugLog = debugLog.toString())
         }
         val body = response.bodyAsText()
+        log("Login body: ${body.take(200)}")
         return runCatching {
             val parsed = json.decodeFromString(LoginResponse.serializer(), body)
             when {
-                !parsed.isSuccess -> LoginResult.Failure("login rejected")
+                !parsed.isSuccess -> LoginResult.Failure("login rejected", debugLog = debugLog.toString())
                 parsed.url.isNotEmpty() -> {
                     val resolved = resolveUrl(parsed.url, portalBase)
                     if (isTrustedUrl(resolved)) runCatching { client.get(resolved) }
-                    LoginResult.Success
+                    LoginResult.Success(debugLog = debugLog.toString())
                 }
-                else -> LoginResult.Success
+                else -> LoginResult.Success(debugLog = debugLog.toString())
             }
-        }.getOrElse { LoginResult.Failure("unexpected response") }
+        }.getOrElse { LoginResult.Failure("unexpected response", debugLog = debugLog.toString()) }
     }
 
     private fun createClient(): HttpClient = HttpClient {
@@ -219,60 +242,8 @@ class IbbWifiPortal : CaptivePortal {
             requestTimeoutMillis = REQUEST_TIMEOUT_MS
             connectTimeoutMillis = CONNECT_TIMEOUT_MS
         }
-    }
-
-    private fun extractCsrf(html: String): String? =
-        Regex(CSRF_PATTERN).find(html)?.groupValues?.getOrNull(1)
-
-    private fun extractUserId(html: String): String? =
-        Regex(USER_ID_PATTERN).find(html)?.groupValues?.getOrNull(1)
-
-    private fun extractUserIdFromUrl(url: String): String? =
-        extractPath(url).split("/").filter { it.isNotEmpty() }
-            .firstOrNull { it.length > MIN_USER_ID_LENGTH && it != "Login" }
-
-    private fun extractSetCookies(headers: io.ktor.http.Headers): String =
-        headers.getAll("Set-Cookie")
-            ?.mapNotNull { it.split(";").firstOrNull()?.trim() }
-            ?.joinToString("; ") ?: ""
-
-    private fun mergeCookies(existing: String, fresh: String): String {
-        val cookieMap = linkedMapOf<String, String>()
-        parseCookiePairs(existing, cookieMap)
-        parseCookiePairs(fresh, cookieMap)
-        return cookieMap.entries.joinToString("; ") { "${it.key}=${it.value}" }
-    }
-
-    private fun parseCookiePairs(raw: String, into: MutableMap<String, String>) {
-        if (raw.isBlank()) return
-        raw.split(";").map { it.trim() }.filter { it.contains("=") }.forEach {
-            val key = it.substringBefore("=").trim()
-            val value = it.substringAfter("=").trim()
-            if (key.isNotEmpty()) into[key] = value
+        defaultRequest {
+            header("User-Agent", USER_AGENT)
         }
     }
-
-    private fun extractPortalBase(entryUrl: String): String =
-        Regex("""(https?://[^/?]+)""").find(entryUrl)?.groupValues?.getOrNull(1) ?: PORTAL_BASE
-
-    private fun extractHost(url: String): String? =
-        Regex("""https?://([^/?:]+)""").find(url)?.groupValues?.getOrNull(1)
-
-    private fun extractPath(url: String): String =
-        Regex("""https?://[^/?]+(/[^?]*)""").find(url)?.groupValues?.getOrNull(1) ?: ""
-
-    private fun isTrustedUrl(url: String): Boolean {
-        val host = extractHost(url) ?: return false
-        return TRUSTED_HOSTS.any { host == it || host.endsWith(".$it") }
-    }
-
-    private fun resolveUrl(url: String, base: String): String =
-        if (url.startsWith("http")) url else "$base$url"
-
-    private fun isRedirect(status: HttpStatusCode): Boolean =
-        status == HttpStatusCode.MovedPermanently
-            || status == HttpStatusCode.Found
-            || status == HttpStatusCode.SeeOther
-            || status == HttpStatusCode.TemporaryRedirect
-            || status == HttpStatusCode.PermanentRedirect
 }

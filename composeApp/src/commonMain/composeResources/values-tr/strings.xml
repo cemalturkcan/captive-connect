@@ -30,4 +30,6 @@
     <string name="error_unsupported_portal">Desteklenmeyen ağ</string>
     <string name="error_login_failed">Kimlik doğrulama başarısız</string>
     <string name="error_verification_failed">Giriş sonrası çevrimdışı</string>
+    <string name="content_description_copy_log">Hata logunu kopyala</string>
+    <string name="network_label">Ağ</string>
 </resources>

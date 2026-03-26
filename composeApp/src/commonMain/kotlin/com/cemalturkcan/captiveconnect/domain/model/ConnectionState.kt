@@ -16,7 +16,8 @@ sealed class ConnectionState {
 
     data class Error(
         val message: String,
-        val type: ErrorType = ErrorType.NETWORK
+        val type: ErrorType = ErrorType.NETWORK,
+        val debugLog: String = "",
     ) : ConnectionState()
 }
 
@@ -24,5 +25,5 @@ enum class ErrorType {
     NETWORK,
     UNSUPPORTED_PORTAL,
     LOGIN_FAILED,
-    VERIFICATION_FAILED
+    VERIFICATION_FAILED,
 }

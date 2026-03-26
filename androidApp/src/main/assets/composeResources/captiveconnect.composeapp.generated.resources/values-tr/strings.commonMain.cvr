@@ -5,6 +5,7 @@ string|button_connected|WUVOxLAgQkHEnkxBTlRJ
 string|button_connect|QkHEnkxBTg==
 string|button_retry|VEVLUkFSIERFTkU=
 string|content_description_back|R2VyaSBkw7Zu
+string|content_description_copy_log|SGF0YSBsb2d1bnUga29weWFsYQ==
 string|country_code_placeholder|OTA=
 string|error_login_failed|S2ltbGlrIGRvxJ9ydWxhbWEgYmHFn2FyxLFzxLF6
 string|error_network|QmHEn2xhbnTEsSBiYcWfYXLEsXPEsXo=
@@ -12,6 +13,7 @@ string|error_unsupported_portal|RGVzdGVrbGVubWV5ZW4gYcSf
 string|error_verification_failed|R2lyacWfIHNvbnJhc8SxIMOnZXZyaW1kxLHFn8Sx
 string|language_description|QXJhecO8eiBkaWxp
 string|language|RGls
+string|network_label|QcSf
 string|password_placeholder|4oCi4oCi4oCi4oCi4oCi4oCi4oCi4oCi
 string|password|xZ5pZnJl
 string|phone_number|VGVsZWZvbiBOdW1hcmFzxLE=

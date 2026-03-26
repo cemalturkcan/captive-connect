@@ -30,4 +30,6 @@
     <string name="error_unsupported_portal">Unsupported network</string>
     <string name="error_login_failed">Authentication failed</string>
     <string name="error_verification_failed">Still offline after login</string>
+    <string name="content_description_copy_log">Copy error log</string>
+    <string name="network_label">Network</string>
 </resources>

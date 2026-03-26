@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.cemalturkcan.captiveconnect.data.AppPreferencesStore
 import com.cemalturkcan.captiveconnect.data.CredentialsStore
+import com.cemalturkcan.captiveconnect.data.NetworkBinder
+import com.cemalturkcan.captiveconnect.data.NetworkMonitor
 import com.cemalturkcan.captiveconnect.localization.AppEnvironment
 import com.cemalturkcan.captiveconnect.navigation.RootComponent
 import com.cemalturkcan.captiveconnect.navigation.RootContent
@@ -19,6 +21,8 @@ fun App(
     rootComponent: RootComponent,
     credentialsStore: CredentialsStore,
     preferencesStore: AppPreferencesStore,
+    networkBinder: NetworkBinder,
+    networkMonitor: NetworkMonitor,
     versionName: String,
 ) {
     val preferences by preferencesStore.preferencesState.collectAsState()
@@ -33,6 +37,8 @@ fun App(
                     component = rootComponent,
                     credentialsStore = credentialsStore,
                     preferencesStore = preferencesStore,
+                    networkBinder = networkBinder,
+                    networkMonitor = networkMonitor,
                     versionName = versionName,
                 )
             }
