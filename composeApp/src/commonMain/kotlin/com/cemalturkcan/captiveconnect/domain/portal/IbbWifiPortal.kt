@@ -18,6 +18,7 @@ import kotlinx.serialization.json.Json
 private const val FLAG_CODE = "tr"
 private const val REQUEST_TIMEOUT_MS = 30_000L
 private const val CONNECT_TIMEOUT_MS = 15_000L
+private const val MAX_REDIRECTS = 5
 
 class IbbWifiPortal : CaptivePortal {
 
@@ -131,28 +132,31 @@ class IbbWifiPortal : CaptivePortal {
         client: HttpClient, entryUrl: String,
         portalBase: String, initialCookies: String,
     ): PageResult? {
-        val response = client.get(entryUrl) {
-            header("Accept", "text/html")
-            if (initialCookies.isNotEmpty()) header("Cookie", initialCookies)
-        }
-        log("Portal page: ${response.status}")
-        var cookies = mergeCookies(initialCookies, extractSetCookies(response.headers))
-
-        if (isRedirect(response.status)) {
-            val location = response.headers["Location"] ?: return null
-            val resolvedUrl = resolveUrl(location, portalBase)
-            if (!isTrustedUrl(resolvedUrl)) return null
-            log("Redirect: $resolvedUrl")
-            val redirected = client.get(resolvedUrl) {
+        var url = entryUrl
+        var cookies = initialCookies
+        repeat(MAX_REDIRECTS) {
+            val response = client.get(url) {
                 header("Accept", "text/html")
-                header("Cookie", cookies)
+                if (cookies.isNotEmpty()) header("Cookie", cookies)
             }
-            log("Redirected page: ${redirected.status}")
-            cookies = mergeCookies(cookies, extractSetCookies(redirected.headers))
-            return PageResult(body = redirected.bodyAsText(), cookies = cookies)
+            log("Fetch $url → ${response.status}")
+            cookies = mergeCookies(cookies, extractSetCookies(response.headers))
+            if (!isRedirect(response.status)) {
+                return PageResult(body = response.bodyAsText(), cookies = cookies)
+            }
+            val location = response.headers["Location"]
+            if (location.isNullOrEmpty()) {
+                log("Redirect without Location header")
+                return null
+            }
+            url = resolveUrl(location, portalBase)
+            if (!isTrustedUrl(url)) {
+                log("Untrusted redirect: $url")
+                return null
+            }
         }
-
-        return PageResult(body = response.bodyAsText(), cookies = cookies)
+        log("Too many redirects ($MAX_REDIRECTS)")
+        return null
     }
 
     private suspend fun postLandingCheck(

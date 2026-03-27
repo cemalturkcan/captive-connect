@@ -10,10 +10,12 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 
-private const val CONNECTIVITY_CHECK_URL =
-    "http://connectivitycheck.gstatic.com/generate_204"
-private const val REQUEST_TIMEOUT_MS = 15_000L
-private const val CONNECT_TIMEOUT_MS = 10_000L
+private val CONNECTIVITY_CHECK_URLS = listOf(
+    "http://connectivitycheck.gstatic.com/generate_204",
+    "http://1.1.1.1/generate_204",
+)
+private const val REQUEST_TIMEOUT_MS = 10_000L
+private const val CONNECT_TIMEOUT_MS = 5_000L
 private const val USER_AGENT = "Mozilla/5.0"
 
 private val TRUSTED_PORTAL_HOSTS = setOf(
@@ -24,30 +26,46 @@ private val TRUSTED_PORTAL_HOSTS = setOf(
 class ConnectivityChecker {
 
     suspend fun check(): DetectionResult {
-        val client = HttpClient {
-            install(HttpRedirect) { checkHttpMethod = false }
-            install(HttpTimeout) {
-                requestTimeoutMillis = REQUEST_TIMEOUT_MS
-                connectTimeoutMillis = CONNECT_TIMEOUT_MS
-            }
-            followRedirects = false
-            defaultRequest {
-                header("User-Agent", USER_AGENT)
-            }
-        }
+        val client = createClient()
         return try {
-            val response: HttpResponse = client.get(CONNECTIVITY_CHECK_URL)
-            when (response.status) {
-                HttpStatusCode.NoContent -> DetectionResult.Online
-                HttpStatusCode.Found, HttpStatusCode.MovedPermanently,
-                HttpStatusCode.TemporaryRedirect, HttpStatusCode.PermanentRedirect,
-                -> parseRedirect(response.headers["Location"].orEmpty())
-                else -> DetectionResult.Unknown("status: ${response.status.value}")
-            }
-        } catch (e: Exception) {
-            DetectionResult.Unknown(e.message ?: "connectivity check failed")
+            checkWithUrls(client)
         } finally {
             client.close()
+        }
+    }
+
+    private suspend fun checkWithUrls(client: HttpClient): DetectionResult {
+        for (url in CONNECTIVITY_CHECK_URLS) {
+            val result = trySingleCheck(client, url)
+            if (result !is DetectionResult.Unknown) return result
+        }
+        return DetectionResult.Unknown("all connectivity checks failed")
+    }
+
+    private suspend fun trySingleCheck(
+        client: HttpClient, url: String,
+    ): DetectionResult = try {
+        val response: HttpResponse = client.get(url)
+        when (response.status) {
+            HttpStatusCode.NoContent -> DetectionResult.Online
+            HttpStatusCode.Found, HttpStatusCode.MovedPermanently,
+            HttpStatusCode.TemporaryRedirect, HttpStatusCode.PermanentRedirect,
+            -> parseRedirect(response.headers["Location"].orEmpty())
+            else -> DetectionResult.Unknown("status: ${response.status.value}")
+        }
+    } catch (_: Exception) {
+        DetectionResult.Unknown("failed: $url")
+    }
+
+    private fun createClient(): HttpClient = HttpClient {
+        install(HttpRedirect) { checkHttpMethod = false }
+        install(HttpTimeout) {
+            requestTimeoutMillis = REQUEST_TIMEOUT_MS
+            connectTimeoutMillis = CONNECT_TIMEOUT_MS
+        }
+        followRedirects = false
+        defaultRequest {
+            header("User-Agent", USER_AGENT)
         }
     }
 
